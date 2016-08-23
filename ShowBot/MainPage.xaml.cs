@@ -67,5 +67,14 @@ namespace ShowBot
 
             lv.ScrollIntoView(lv.SelectedItem);
         }
+
+        private void text_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                send_Click(sender, e);
+                text.Text = "";
+            }
+        }
     }
 }
