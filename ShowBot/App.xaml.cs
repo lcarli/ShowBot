@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
@@ -14,6 +15,11 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using System.Net.Http;
+using Microsoft.Bot.Connector.DirectLine.Models;
+using Newtonsoft.Json;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace ShowBot
 {
@@ -26,10 +32,59 @@ namespace ShowBot
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
+
+        public static Conversation ConversationInfo;
+
         public App()
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
+        }
+
+        public static async Task<Message> messageToBot(string name, string message)
+        {
+            Message msg = new Message();
+            msg.Text = message;
+            msg.Id = name;
+
+            var baseURI = new Uri("https://directline.botframework.com/api/conversations/");
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("BotConnector", "3bYapmOCC04.cwA.60E.PCm8N5Cw3m0mBcZ6dNWdQuJFd68zh4hmheCJPm7OFWo");
+            HttpResponseMessage response = await client.PostAsync(baseURI, new StringContent(""));
+            ConversationInfo = JsonConvert.DeserializeObject<Conversation>(response.Content.ReadAsStringAsync().Result);
+            if (response.IsSuccessStatusCode)
+            {
+                var conversationURI = baseURI + ConversationInfo.ConversationId + "/messages/";
+                var jsonmsg = JsonConvert.SerializeObject(msg);
+                response = await client.PostAsync(conversationURI, new StringContent(jsonmsg, Encoding.UTF8, "application/json"));
+                string wtf = response.Content.ReadAsStringAsync().Result;
+                if (response.IsSuccessStatusCode)
+                {
+                    response = await client.GetAsync(conversationURI);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        MessageSet BotMessage = JsonConvert.DeserializeObject<MessageSet>(response.Content.ReadAsStringAsync().Result);
+                        return BotMessage.Messages[1];
+                    }
+                    else
+                    {
+                        msg.Id = "Error";
+                        return msg;
+                    }
+                }
+                else
+                {
+                    msg.Id = "Error";
+                    return msg;
+                }
+            }
+            else
+            {
+                msg.Id = "Error";
+                return msg;
+            }
+
         }
 
         /// <summary>
